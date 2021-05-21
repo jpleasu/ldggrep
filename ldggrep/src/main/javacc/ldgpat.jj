@@ -1,0 +1,255 @@
+
+options {
+  STATIC = false; // always false in ParserGeneratorCC
+  LOOKAHEAD = 2; // because of bareword arguments
+  JAVA_TEMPLATE_TYPE = "modern";
+}
+PARSER_BEGIN(Parser)
+package com.github.jpleasu.ldggrep.parser_generated;
+import com.github.jpleasu.ldggrep.parser.*;
+import java.util.*;
+
+//  mvn compile exec:java -Dexec.mainClass=com.github.jpleasu.ldggrep.parser_generated.Parser
+@SuppressWarnings("unused")
+public class Parser {
+  public static void main(String []args) throws Exception {
+    String[] examples = new String[] {
+      "\"before\" /blah blah blah/ 'after'",
+      "\"before\" [a!=null && (b[5] == 5)] 'after'",
+      "<'ham'> /bacon/",
+      "<'ham'> /bacon/ <[po[[r]]k]>",
+      "</cats/> .{,15} </dogs/>",
+      "'a'* 'b'",
+      "a* b",
+      "!a* b",
+      "a* !(b)",
+      "!!a* !!(b)",
+      "!!!a* !!!(b)",
+      "a(1,\"c\")",
+    };
+    for(String example: examples) {
+      System.out.printf("Example: \"%s\"\n", example);
+      Parser p = new Parser(example);
+      Expr x=p.expr();
+      System.out.printf("  %s\n", x);
+    }
+  }
+}
+
+PARSER_END(Parser)
+
+
+TOKEN_MGR_DECLS: {
+  int bracket_nesting_depth;
+}
+
+
+
+<DEFAULT>
+TOKEN: {
+  <#LETTER: ["a"-"z", "A"-"Z"]>
+    | <#DIGIT: ["0"-"9"]>
+}
+
+<DEFAULT>
+TOKEN: {
+         <NUMBER: ("0" ("x" (["0"-"9", "a"-"f", "A"-"F"])+)? ) | ["1"-"9"] (["0"-"9"])* >
+           | <COMMA: ",">
+           | <DOT: ".">
+           | <QUOTE: "'">:IN_LITERAL
+           | <DQUOTE: "\"">:IN_DLITERAL
+           | <SLASH: "/">: IN_REGEX
+           | <LBRACKET: "[">{bracket_nesting_depth=1;}:IN_CODE
+           | <LPAREN: "(">
+           | <RPAREN: ")">
+           | <LBRACE: "{">
+           | <RBRACE: "}">
+           | <PIPE: "|">
+           | <STAR: "*">
+           | <PLUS: "+">
+           | <QMARK: "?">
+           | <ID: (<LETTER>|"_")(<LETTER>|<DIGIT>|"_")*>
+}
+
+<IN_LITERAL>
+TOKEN: {
+  <LITERAL_BODY: ( "\\\'" | ~["'"])+ >
+  | <LITERAL_QUOTE: "'">:DEFAULT
+}
+
+<IN_DLITERAL>
+TOKEN: {
+  <DLITERAL_BODY: ( "\\\"" | ~["\""])+ >
+  | <DLITERAL_DQUOTE: "\"">:DEFAULT
+}
+
+
+
+
+<IN_CODE>
+TOKEN: {
+  <CODE_BODY: (~["[","]"])+ >
+  | "[" {
+    bracket_nesting_depth+=1;
+    matchedToken.kind=CODE_BODY;
+  }
+  | <RBRACKET: "]">{
+    bracket_nesting_depth-=1;
+    if(bracket_nesting_depth!=0) {
+      matchedToken.kind=CODE_BODY;
+      SwitchTo(IN_CODE);
+    } else {
+      SwitchTo(DEFAULT);
+    }
+  }
+}
+
+<IN_REGEX>
+TOKEN: {
+  <REGEX_BODY: ("\\/" | ~["/"])+ >
+  | <REGEX_SLASH: "/">:DEFAULT
+}
+
+
+<DEFAULT>
+SKIP: {" " | "\t" | "\n" | "\r"}
+
+
+
+String str() : {
+  Token t;
+}
+{
+  ((<QUOTE> t=<LITERAL_BODY> <LITERAL_QUOTE> )
+    | (<DQUOTE> t=<DLITERAL_BODY> <DLITERAL_DQUOTE> )){
+    return t.image;
+  }
+}
+
+Object arg() : {
+  Token t;
+  String s;
+} {
+  s=str() { return s; }
+  | (t=<NUMBER>) { return Integer.decode(t.image); }
+}
+
+
+Pat pred(): {
+  String s;
+  Token t;
+  Object o;
+  StringBuilder sb=new StringBuilder();
+  //Alt a=new Alt();
+  Pat p=null;
+  ArrayList<Object> args=null; 
+}
+{
+  s=str() {
+    return new LiteralPred(s);
+  }
+  | (<SLASH> t=<REGEX_BODY> <REGEX_SLASH> ) {
+    return new RegexPred(t.image);
+  }
+  | (<LBRACKET> (t=<CODE_BODY> {sb.append(t.image);})* <RBRACKET> ) {
+    return new CodePred(sb.toString());
+  }
+  | ( t=<ID> (<LPAREN> (o=arg() { args=new ArrayList<Object>(); args.add(o);}) (<COMMA> o=arg() {args.add(o);} )* <RPAREN>) ? ) {
+    return new BarePred(t.image,args);
+  }
+  | <DOT> { return new AnyPred(); }
+  | ( "<" p=pred()  ">" ) {
+    return new StatePred((Predicate)p);
+  }
+  | ( "!" (p=pred() | "(" p=pred() ")" ))  {
+    boolean b=true;
+    while(p instanceof NotPred) {
+      p=((NotPred)p).p;
+      b=!b;
+    }
+    if(b)
+      return new NotPred((Predicate)p);
+    else
+      return p;
+  }
+}
+
+
+
+Pat atom() : {
+  Pat a=null, p=null;
+}
+{
+  <LPAREN>  a=alt() <RPAREN>  {return a;}
+  | p=pred() {return p;}
+}
+
+
+Pat rep() : {
+  Pat p=null;
+  Token c=null;
+  Token n1=null,n2=null;
+}
+{
+  ( p=atom() ( 
+            <LBRACE> (n1=<NUMBER>)? (c=<COMMA> (n2=<NUMBER>)? )? <RBRACE> {
+              if(c!=null)
+                return new Rep(p,n1!=null?Integer.valueOf(n1.image):0, n2!=null?Integer.valueOf(n2.image):-1);
+              else {
+                int n=n1!=null?Integer.valueOf(n1.image):0;
+                return new Rep(p,n,n);
+              }
+            }
+          | <STAR> {return new Rep(p,0,-1);}
+          | <PLUS> {return new Rep(p,1,-1);}
+          | <QMARK> {return new Rep(p,0,1);}
+        )? ) {
+    return p;
+  }
+}
+
+Pat seq(): {
+  Seq s=new Seq();
+  Pat p=null;
+}
+{
+  ( (p=rep() {s.add(p);} )+ ) {
+    if(s.size()==1)
+      return p;
+    return s;
+  }
+}
+
+
+
+Pat alt(): {
+  Alt a=new Alt();
+  Pat s=null;
+}
+{
+  ( s=seq() {a.add(s);}  (<PIPE>   s=seq() {a.add(s);} )*  ) {
+    if(a.size()==1)
+      return s;
+    return a;
+  }
+}
+
+Expr expr(): {
+  Pat s=null;
+}
+{
+  ( s=alt() <EOF> )  {
+    return new Expr(s);
+  }
+}
+
+List<Expr> expr_list(): {
+  List<Expr> l = new ArrayList<Expr>();
+  Pat s=null;
+}
+{
+  (  (s=alt() { l.add(new Expr(s));} )  (";"  s=alt() { l.add(new Expr(s));}  )*  (";")?  <EOF> )  {
+    return l;
+  }
+}
+

@@ -1,0 +1,114 @@
+<h1>Syntax</h1>
+<pre>
+  expr  ::= alt (";" alt)*
+  alt   ::= cat ("|" cat)*
+  cat   ::= atom atom*
+  atom  ::= "(" expr ")" | rep
+  rep   ::= pred ("{" NUMBER?, NUMBER? "}" | "*" | "+" )?
+  pred  ::= node_pred | edge_pred
+  edge_pred ::= pred_expr
+  node_pred ::= "&lt;" pred_expr "&gt;"
+  pred_expr ::= "!" pred_expr | "\"" STRING "\"" | "/" REGEX "/" | IDENTIFIER | "[" JAVASCRIPT "]" 
+</pre>
+
+<h1>Overview</h1>
+
+<p>LDGGrep constructs a state machine from a query expression.  The state machine
+accepts or rejects paths in a labeled directed graph by evaluating node and
+edge predicates from the expression in sequence.</p>
+
+<p>For a fixed labeled directed graph, the set of all matching paths forms a state
+machine, the "intersection" of all possible paths with the query machine.
+LDGGrep minimizes the result (as a finite state machine) and presents it as a
+labeled directed graph.</p>
+
+<p>In RefGrep, nodes are Ghidra addresses and edges are Ghidra Reference objects.
+Clicking a node directs the code browser to jump to the corresponding address.
+Clicking an edge directs the code browser to the source of the corresponding
+reference.</p>
+
+
+<h1>Predicates</h1>
+
+<p>LDGGrep accepts 4 kinds of predicates: literal strings, regular expressions,
+Iverson bracketed JavaScript, and bareword identifiers.</p>
+
+<h2>string literal - <span class="code">"some text"</span></h2>
+LDGGrep nodes and edges can be arbitrary Java objects and a <span
+class="code">Model</span> can provide <span class="code">nodeToString</span>
+and <span class="code">edgeToString</span> methods to override the result of
+the default, <span class="code">toString</span>, conversion.  E.g. <span
+class="code">RefGrep</span> nodes are <span class="code">Address</span> objects
+and its <span class="code">nodeToString</span> method does symbol lookup.
+
+A string literal predicate tests against the value of <span
+class="code">nodeToString</span>.
+
+<h2>regular expression - <span class="code">/a? pat[t]er*n/</span></h2>
+Regular expression predicates match against the same string
+representations as literals.
+
+
+<h2>JavaScript Iverson bracket - <span class="code">[x.isSomething()]</span> </h2>
+To access methods of node/edge objects directly from a query expression, use a
+JavaScript predicate.  The node or edge to test is given the name "<span
+class="code">x</span>", and the expression content is executed in its "with"
+context, e.g.  "<span class="code">with(x) { ... }</span>".
+
+<h2>bareword - <span class="code">abc123</span></h2>
+Bareword identifiers (alphanumeric character sequences with no quotes or
+slashes) correspond to annotated Java methods of the underlying graph model. By
+extending the LDGGrep <span class="code">Model</span> class in a ghidra script,
+more barewords can be added.  See <span class="code">RefGrepExt.java</span> for
+an example.
+
+<br/>
+Several other variables are defined:
+<ul>
+<li><span class="code">p</span> - the current <span class="code">Program</span></li>
+<li><span class="code">li</span> - its <span class="code">Listing</span></li>
+<li><span class="code">st</span> - its <span class="code">SymbolTable</span></li>
+<li><span class="code">fm</span> - its <span class="code">FunctionManager</span></li>
+<li><span class="code">rm</span> - its <span class="code">ReferenceManager</span></li>
+<li><span class="code">n2s</span> - the <span class="code">nodeToString</span> method of the the <span class="code">Model</span></li>
+<li><span class="code">e2s</span> - the <span class="code">edgeToString</span> method of the the <span class="code">Model</span></li>
+<li><span class="code">s</span> - the current <span class="code">GhidraScript</span></li>
+</ul>
+
+For example, with e2s we can emulate string literal and regular expression predicates
+tests:
+<pre>
+    <a class="code" href="#">"abc"</a>    is equivalent to    <a class="code" href="#">[e2s(x)=="abc"]</pre>
+and
+<pre>
+    <a class="code" href="#">/abc/</a>    is equivalent to    <a class="code" href="#">[e2s(x).match(/abc/)]</a>
+</pre>
+
+In the <span class="code">RefGrep</span> model, edges are <span
+class="code">Reference</span> objects, so we could find all paths of length 5
+where addresses increase:
+<pre>
+    <a class="code" href="#">[x.getToAddress().compareTo(x.getFromAddress())&gt;0]{5}</a>
+</pre>
+Since the contents of the bracket are in the <span class="code">with</span> context of <span
+class="code">x</span>, we can omit <span class="code">x</span> and get the same
+result:
+<pre>
+    <a class="code" href="#">[getToAddress().compareTo(getFromAddress())&gt;0]{5}</a>
+</pre>
+
+In <span class="code">RefGrep</span>, nodes are Ghidra <span
+class="code">Address</span> objects, so to find all paths of length up to 3
+starting at an address between <span class="code">0x849000</span> and <span
+class="code">0x849000</span>: 
+because we're in the "with" context of x, we can omit "x":
+<pre>
+    <a class="code" href="#">&lt;[0x840000 &lt;= getOffset() && getOffset()&lt;= 0x849000 ]&gt;</a>
+</pre>
+
+The comma sequence operator in JavaScript allows us to define variables in an
+expression:
+<pre>
+    <a class="code" href="#">&lt;[a=getOffset(), 0x840000 &lt;= a && a &lt;= 0x849000 ]&gt;</a>
+</pre>
+

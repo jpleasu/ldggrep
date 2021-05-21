@@ -1,0 +1,12 @@
+Find exports that are or call to a "big" function in up to 3 hops
+:  <exp> call{,3} <big>
+
+Find read references to functions that start with a push instruction
+:  rref <push>
+
+Find all chains of jumps
+:  jumpref+
+
+Collect big functions in slot 1 and small functions in slot 0 (use "mem" button)
+:  (<big><sto(1)> | <!big><sto(0)>)
+

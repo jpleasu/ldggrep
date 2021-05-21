@@ -1,0 +1,14 @@
+Find data references to functions that ultimately call to a new or malloc in up to 2 hops
+:  ref <func> call{,2} </malloc|^new/>
+
+Find functions that are referenced in data but never called directly
+:   call <sto(0)>; ref <func><!mem(0)> <sto(0)>
+The first expression stores the targets of all calls.  The second expression finds references to 
+functions that are not in the incoming slot 0 and stores them in outgoing slot 0.
+
+To avoid running out of memory, partition starting points, and start with the first block
+:  <part(1,1000)> call <sto(0)>; ref <func><!mem(0)> <sto(0)>
+
+Continue to the second block
+:  <part(2,1000)> call <sto(0)>; ref <func><!mem(0)> <sto(0)>
+

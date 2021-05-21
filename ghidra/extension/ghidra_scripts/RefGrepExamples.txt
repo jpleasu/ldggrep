@@ -1,0 +1,21 @@
+Call paths starting at nodes named "entry" and ending at nodes matching /libc/
+:  <"entry"> call* </libc/>
+
+Call paths starting at main ending at nodes whose name contain "crt", case insensitive
+:  <"main"> call* </(?i)crt/>
+
+Call paths from main or entry ending in a function reference
+:  </^(main|entry)$> call* ref <func>
+
+Call paths from main or entry of length up to 3 that end in an import
+:  </^(main|entry)$> call{,3} <imp>
+
+Call paths from main or entry of length up to 3 that end in a reference to a string
+:  </^(main|entry)$> call{,3} ref <str>
+  
+For each function that calls to a print function, find string references within 3 calls.
+:  <func> <sto(0)> call </print/> ; <mem(0)> call{,3} ref <sto(0)> <str>
+Note, the first expression stores functions that call to print in outgoing slot 0.
+The second expression starts by matching those functions, now in incoming slot 0. Outgoing
+slot 0 will contain the stored references to strings.
+

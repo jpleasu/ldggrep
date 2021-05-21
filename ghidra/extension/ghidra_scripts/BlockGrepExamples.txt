@@ -1,0 +1,11 @@
+Compute the control flow graph of the function "entry"
+:  <"entry"> block*
+
+Find control paths between a call to malloc and a call to strcpy
+:  <func> block* <calls("malloc")> block* <calls("strcpy")>
+
+Find functions with control paths that call and paths that don't call free.  graph the non-freeing paths.
+:  <func> <sto(0)> block* </^calls:free$/> ;  <mem(0)> <sto(0)> (block <!/calls:free/> )* <term>
+
+Find control paths terminating in a call for up to 20 functions.
+:  <func> <max(20)> ( <!/calls:/> block )* </calls:/>
