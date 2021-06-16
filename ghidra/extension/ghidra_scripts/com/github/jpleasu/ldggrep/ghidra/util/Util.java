@@ -5,17 +5,30 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.stream.*;
 
 import javax.swing.event.HyperlinkEvent;
 
 import generic.stl.Pair;
+import ghidra.app.decompiler.ClangNode;
+import ghidra.app.decompiler.ClangTokenGroup;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.pcode.*;
 import ghidra.util.Msg;
 
 public class Util {
+
+	public static Address getPCAddress(ClangNode node) {
+		while (node != null) {
+			Address addr = node.getMinAddress();
+			if (addr != null) {
+				return addr;
+			}
+			node = node.Parent();
+		}
+		return null;
+	}
 
 	// adapted from Ghidra's GHelpHTMLEditorKit
 	public static void browseExternalLink(HyperlinkEvent e) {
@@ -201,4 +214,12 @@ public class Util {
 		return vns;
 	}
 
+	public static Stream<ClangNode> tokenStream(ClangNode node) {
+		if (node instanceof ClangTokenGroup) {
+			return IntStream.range(0, node.numChildren())
+					.mapToObj(node::Child)
+					.flatMap(Util::tokenStream);
+		}
+		return Stream.of(node);
+	}
 }

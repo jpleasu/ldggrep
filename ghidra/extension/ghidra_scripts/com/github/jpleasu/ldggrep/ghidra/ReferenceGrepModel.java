@@ -111,12 +111,14 @@ public class ReferenceGrepModel extends LDGModel<Address, RefEdge> {
 		return false;
 	}
 
+	protected final Program program;
 	protected final FunctionManager fm;
 	protected final SymbolTable st;
 	protected final Listing li;
 	protected final Memory mm;
 
 	public ReferenceGrepModel(Program program) {
+		this.program = program;
 		fm = program.getFunctionManager();
 		st = program.getSymbolTable();
 		li = program.getListing();

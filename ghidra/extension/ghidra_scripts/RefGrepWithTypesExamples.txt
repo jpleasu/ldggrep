@@ -1,0 +1,6 @@
+Find all references to Structure fields within 3 hops from main
+:  </main/> call{,3} field
+
+Find all references to passwd::pw_name from any export
+:  <exp> field </::pw_name/>
+

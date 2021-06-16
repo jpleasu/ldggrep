@@ -43,13 +43,18 @@ dialog with basic documentation, and a graph viewer.
   are references like function calls and data indirections.
   ([example queries](ghidra/extension/ghidra_scripts/RefGrepExamples.txt))
 
+* `RefGrepExt` demonstrates extending `RefGrep` with extra predicates.
+  ([example queries](ghidra/extension/ghidra_scripts/RefGrepExtExamples.txt))
+
 * `RefGrepWithDataStarts` is `RefGrep` except all reference sources, and not
   just functions, are added to the set of starting nodes.  That can be a large
   set, so queries should start with a selective first predicate.
   ([example queries](ghidra/extension/ghidra_scripts/RefGrepWithDataStartsExamples.txt))
 
-* `RefGrepExt` demonstrates extending `RefGrep` with extra predicates.
-  ([example queries](ghidra/extension/ghidra_scripts/RefGrepExtExamples.txt))
+* `RefGrepWithTypes` is `RefGrep` with extra references to Structure fields.
+  Note, the first time a function is visited, it's decompiled - subsequent
+  visits will be faster.
+  ([example queries](ghidra/extension/ghidra_scripts/RefGrepWithTypesExamples.txt))
 
 * `BlockGrep` extends `RefGrep` with basic blocks for control flow graph
   queries.
@@ -222,6 +227,8 @@ see [ldgpat.jj](dggrep/src/main/javacc/ldgpat.jj) for more detail.
 # LDGGrep changelog
 
 - ldggrep-1.1
-    - add start generators
+    - added start generators
+    - added Ghidra script RefGrepWithTypes
 - ldggrep-1.0
     - initial releasa
+
