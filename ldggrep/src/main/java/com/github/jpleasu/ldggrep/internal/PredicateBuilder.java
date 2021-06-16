@@ -1,6 +1,5 @@
 package com.github.jpleasu.ldggrep.internal;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
@@ -10,31 +9,28 @@ import java.util.stream.Collectors;
 
 import org.graalvm.polyglot.*;
 
-import com.github.jpleasu.ldggrep.MethodManager;
-import com.github.jpleasu.ldggrep.MethodManager.BoundMethod;
+import com.github.jpleasu.ldggrep.BoundMethod;
 import com.github.jpleasu.ldggrep.parser.*;
 import com.github.jpleasu.ldggrep.util.ClassUtils;
 
 /**
- * builds predicate for the predicate machine from AST nodes from the parser.
+ * builds predicates for the predicate machine using AST nodes from the parser.
  *
- * @param <X> either the node or edge type of an LDG
+ * @param <X> either the node or edge type of an LDG - the predicate argument type
  */
 public class PredicateBuilder<X> {
-	final Map<String, Pred<X>> barewords = new HashMap<>();
-	final Class<? extends Annotation> xAnnotationClass;
-	final Function<X, String> xToString;
+	// keys are bareword expressions, including arguments
+	final Map<String, Pred<X>> methodPredicateCache = new HashMap<>();
 
-	final MethodManager methodManager;
 	private Context codeContext;
 
+	final Map<String, BoundMethod> methodMap;
 	final Function<X, Object> xToCode;
+	final Function<X, String> xToString;
 
-	public PredicateBuilder(MethodManager methodManager,
-			Class<? extends Annotation> xAnnotationClass, Function<X, String> xToString,
+	public PredicateBuilder(Map<String, BoundMethod> methodMap, Function<X, String> xToString,
 			Function<X, Object> xToCode) {
-		this.methodManager = methodManager;
-		this.xAnnotationClass = xAnnotationClass;
+		this.methodMap = methodMap;
 		this.xToString = xToString;
 		this.xToCode = xToCode;
 	}
@@ -51,7 +47,7 @@ public class PredicateBuilder<X> {
 
 	protected Pred<X> buildMethodPredicate(BarePred bwp) {
 		// find the predicate method corresponding to the type, edge or node, and bareword
-		BoundMethod boundMethod = methodManager.find(xAnnotationClass, bwp.name);
+		BoundMethod boundMethod = methodMap.get(bwp.name);
 		if (boundMethod == null) {
 			throw new RuntimeException(
 				String.format("No method corresponds to bareword \"%s\"", bwp.name));
@@ -61,61 +57,59 @@ public class PredicateBuilder<X> {
 		method.setAccessible(true);
 		Class<?>[] methodArgTypes = method.getParameterTypes();
 
-		XPred xpred = new XPred(xAnnotationClass, method);
-		String[] predicateArgs = xpred.args;
+		String[] infoArgs = boundMethod.info.args;
 
 		// validate number of args from query expression against method annotation
 		{
-			String predicatePrototype = bwp.name;
-			if (predicateArgs.length > 0) {
-				predicatePrototype += '(';
-				predicatePrototype += Arrays.stream(predicateArgs).collect(Collectors.joining(","));
-				predicatePrototype += ')';
+			String prototype = bwp.name;
+			if (infoArgs.length > 0) {
+				prototype += '(';
+				prototype += Arrays.stream(infoArgs).collect(Collectors.joining(","));
+				prototype += ')';
 			}
 
-			if (bwp.args.size() < predicateArgs.length) {
+			if (bwp.args.size() < infoArgs.length) {
 				throw new RuntimeException(
 					String.format("Too few arguments to predicate %s from %s in expression \"%s\"",
-						predicatePrototype, methodThiz.getClass().getName(), bwp.toString()));
+						prototype, methodThiz.getClass().getName(), bwp.toString()));
 			}
-			if (bwp.args.size() > predicateArgs.length) {
+			if (bwp.args.size() > infoArgs.length) {
 				throw new RuntimeException(
 					String.format("Too many arguments to predicate %s from %s in expression \"%s\"",
-						predicatePrototype, methodThiz.getClass().getName(), bwp.toString()));
+						prototype, methodThiz.getClass().getName(), bwp.toString()));
 			}
 		}
 
 		// construct arguments for method invocation
 		boolean usesPredicateMachineState;
-		int firstPredicateArgPos;
-		if (methodArgTypes.length - predicateArgs.length == 2) {
+		int firstArgPos;
+		if (methodArgTypes.length - infoArgs.length == 2) {
 			if (!ClassUtils.isAssignable(methodArgTypes[0], int.class))
 				throw new RuntimeException(String.format(
 					"Based on argument count, first argument of predicate method \"%s\" must be int, not  %s",
 					method.getName(), methodArgTypes[0].getName()));
 			usesPredicateMachineState = true;
-			firstPredicateArgPos = 2;
+			firstArgPos = 2;
 		}
-		else if (methodArgTypes.length - predicateArgs.length == 1) {
+		else if (methodArgTypes.length - infoArgs.length == 1) {
 			usesPredicateMachineState = false;
-			firstPredicateArgPos = 1;
+			firstArgPos = 1;
 		}
 		else {
 			throw new RuntimeException(String.format(
 				"Misconfigured predicate method %s: method must take either 1 (the node) or 2 (predicate machine state + node) more arguments than args",
 				method.getName()));
 		}
-		final Object[] methodArgs = new Object[firstPredicateArgPos + bwp.args.size()];
+		final Object[] methodArgs = new Object[firstArgPos + bwp.args.size()];
 		for (int i = 0; i < bwp.args.size(); ++i) {
 			Object bwArg = bwp.args.get(i);
 
-			if (!ClassUtils.isAssignable(methodArgTypes[firstPredicateArgPos + i],
-				bwArg.getClass()))
+			if (!ClassUtils.isAssignable(methodArgTypes[firstArgPos + i], bwArg.getClass()))
 				throw new RuntimeException(
 					String.format("\"%s\" takes a %s in position %d, but \"%s\" called with a %s",
-						method.getName(), methodArgTypes[firstPredicateArgPos + i].getName(), i,
-						bwArg, bwArg.getClass().getName()));
-			methodArgs[firstPredicateArgPos + i] = bwp.args.get(i);
+						method.getName(), methodArgTypes[firstArgPos + i].getName(), i, bwArg,
+						bwArg.getClass().getName()));
+			methodArgs[firstArgPos + i] = bwp.args.get(i);
 		}
 
 		// create and return the predicate
@@ -176,10 +170,11 @@ public class PredicateBuilder<X> {
 	}
 
 	protected Pred<X> buildBarePredicate(BarePred bwp) {
-		Pred<X> pred = barewords.computeIfAbsent(bwp.toString(), k -> buildMethodPredicate(bwp));
+		Pred<X> pred =
+			methodPredicateCache.computeIfAbsent(bwp.toString(), k -> buildMethodPredicate(bwp));
 		if (pred == null) {
-			throw new RuntimeException(String.format("\"%s\" is not a valid %s bareword",
-				xAnnotationClass.getSimpleName(), bwp.name));
+			throw new RuntimeException(
+				String.format("unknown barework predicate \"%s\"", bwp.name));
 		}
 		return pred;
 	}

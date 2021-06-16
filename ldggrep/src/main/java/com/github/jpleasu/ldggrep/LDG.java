@@ -12,7 +12,7 @@ import java.util.stream.Stream;
 public interface LDG<N, E> {
 
 	/**
-	 * @return a stream of nodes that all queries will start with
+	 * @return the default stream of nodes to start a query from
 	 */
 	Stream<N> startNodes();
 

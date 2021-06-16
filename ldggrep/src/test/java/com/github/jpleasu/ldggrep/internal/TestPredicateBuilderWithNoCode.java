@@ -58,7 +58,8 @@ public class TestPredicateBuilderWithNoCode {
 		jsctx = null;
 		transformer = x -> x;
 		stringify = x -> x;
-		predicateBuilder = new PredicateBuilder<String>(mm, NPred.class, stringify, transformer);
+		predicateBuilder =
+			new PredicateBuilder<String>(mm.getMethodMap(NPred.class), stringify, transformer);
 	}
 
 	@Test

@@ -19,10 +19,60 @@ public class PredicateMachine<N, E> {
 	final private HashMap<Integer, List<Trans>> outEdges = new HashMap<>();
 	private int numStates = 0;
 
+	static class StartNPred<N> {
+		public Predicate syntax;
+		public NTrans<N> trans;
+		public Pred<N> pred;
+
+		boolean unset() {
+			return syntax == null;
+		}
+	}
+
+	public static class StartGenInfo<N, E> {
+		public final Generator<N, E> gen;
+		public final int targetState;
+		public final Pred<N> pred;
+
+		public StartGenInfo(Generator<N, E> gen, int targetState, Pred<N> pred) {
+			this.gen = gen;
+			this.targetState = targetState;
+			this.pred = pred;
+		}
+	}
+
+	final StartGenInfo<N, E> startGenInfo;
+
+	/**
+	 * startNPred is computed during machine construction.
+	 * 
+	 * during construction, startNPred unset indicates a starting NPred hasn't been parsed yet.
+	 * after construction, if startNPred is still unset, it's set to null.
+	 *
+	 * note: this is the syntactic, not semantic, starting predicate.
+	 */
+	StartNPred<N> startNPred;
+
 	public PredicateMachine(LDGModel<N, E> model, Expr queryExpression) {
 		this.model = model;
 		numStates = 2;
+		startNPred = new StartNPred<>();
 		addPatternTransition(0, queryExpression.p, 1);
+		if (startNPred != null && startNPred.unset() || outEdges.get(INITIAL_STATE).size() > 1) {
+			startNPred = null;
+		}
+		if (startNPred == null) {
+			startGenInfo = null;
+		}
+		else {
+			Generator<N, E> gen = model.buildGenerator(startNPred.syntax);
+			if (gen != null) {
+				startGenInfo = new StartGenInfo<>(gen, startNPred.trans.target, startNPred.pred);
+			}
+			else {
+				startGenInfo = null;
+			}
+		}
 	}
 
 	private void addTransition(int n0, Trans e) {
@@ -76,11 +126,26 @@ public class PredicateMachine<N, E> {
 			Pred<E> p = model.buildEdgePred((Predicate) pat);
 			addTransition(s0, new ETrans<>(p, s1));
 		}
-		else if (pat instanceof StatePred) {
-			StatePred sp = (StatePred) pat;
+		else if (pat instanceof NodePred) {
+			NodePred sp = (NodePred) pat;
 			Pred<N> p = model.buildNodePred(sp.p);
-			addTransition(s0, new NTrans<>(p, s1));
+			NTrans<N> t = new NTrans<>(p, s1);
+			addTransition(s0, t);
+			if (s0 == INITIAL_STATE && startNPred != null) {
+				if (startNPred.unset()) {
+					startNPred.syntax = sp.p;
+					startNPred.trans = t;
+					startNPred.pred = p;
+				}
+				else {
+					startNPred = null;
+				}
+			}
 		}
+	}
+
+	public StartGenInfo<N, E> getStartGenInfo() {
+		return startGenInfo;
 	}
 
 }

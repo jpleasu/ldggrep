@@ -18,6 +18,7 @@ A path query tool for program analysis.
     * [predicates](#predicates)
     * [node predicates](#node-predicates)
     * [grammar](#grammar)
+* [LDGGrep changelog](#ldggrep-changelog)
 
 <!-- vim-markdown-toc -->
 
@@ -218,3 +219,9 @@ pred_expr ::= "!" pred_expr | DOUBLE_QUOTE STRING DOUBLE_QUOTE | "/" REGEX "/" |
 
 see [ldgpat.jj](dggrep/src/main/javacc/ldgpat.jj) for more detail.
 
+# LDGGrep changelog
+
+- ldggrep-1.1
+    - add start generators
+- ldggrep-1.0
+    - initial releasa

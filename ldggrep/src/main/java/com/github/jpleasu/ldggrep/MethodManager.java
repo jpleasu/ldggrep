@@ -6,67 +6,83 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
-import com.github.jpleasu.ldggrep.internal.XPred;
+import com.github.jpleasu.ldggrep.internal.MethodInfo;
 
 /**
- * processes LDGGrep predicate annotations from classes and provides binding routines
+ * processes and manages LDGGrep annotated methods
  */
 public class MethodManager {
 	final Object target;
 
-	static class UnboundMethodMap {
-		final Class<?> targetClass;
-		final Map<String, Method> methods;
+	final Map<Class<? extends Annotation>, Map<String, BoundMethod>> methodMap;
 
-		UnboundMethodMap(Class<?> targetClass, Map<String, Method> methods) {
-			this.targetClass = targetClass;
-			this.methods = methods;
-		}
-
-		public Class<?> getTargetClass() {
-			return targetClass;
-		}
-
-		public Method getMethod(String name) {
-			return methods.get(name);
-		}
-
-	}
-
-	final Map<Class<? extends Annotation>, List<UnboundMethodMap>> unboundMethodMapMap =
-		new HashMap<>();
+	private final MethodInfo LITERAL_METHOD_INFO =
+		new MethodInfo(StartGen.LITERAL, new String[] { "literal" }, "a literal");
+	private final MethodInfo REGEX_METHOD_INFO =
+		new MethodInfo(StartGen.REGEX, new String[] { "pattern" }, "a regex");
 
 	public MethodManager(Object target) {
 		this.target = target;
-
-		Map<Class<? extends Annotation>, HashMap<String, Method>> mapByAnnotation = Map.of(
-			NPred.class, new HashMap<String, Method>(), EPred.class, new HashMap<String, Method>());
+		methodMap = new HashMap<>();
+		methodMap.put(NPred.class, new HashMap<>());
+		methodMap.put(EPred.class, new HashMap<>());
 		Class<?> clazz = target.getClass();
 
 		while (clazz != null) {
-			for (final Method m : clazz.getDeclaredMethods()) {
-				for (Entry<Class<? extends Annotation>, HashMap<String, Method>> e : mapByAnnotation
+			for (final Method method : clazz.getDeclaredMethods()) {
+				for (Entry<Class<? extends Annotation>, Map<String, BoundMethod>> e : methodMap
 						.entrySet()) {
 					Class<? extends Annotation> annClass = e.getKey();
+					Map<String, BoundMethod> map = e.getValue();
 
-					if (m.isAnnotationPresent(annClass)) {
-						Annotation ann = m.getAnnotation(annClass);
-						XPred xpred = new XPred(ann);
-						e.getValue().put(xpred.getName(m.getName()), m);
+					if (method.isAnnotationPresent(annClass)) {
+						Annotation ann = method.getAnnotation(annClass);
+
+						MethodInfo xpred = new MethodInfo(ann);
+						map.putIfAbsent(xpred.getName(method.getName()),
+							new BoundMethod(target, method, xpred));
 					}
 				}
 			}
 			clazz = clazz.getSuperclass();
 		}
-		for (Entry<Class<? extends Annotation>, HashMap<String, Method>> e : mapByAnnotation
-				.entrySet()) {
-			unboundMethodMapMap.computeIfAbsent(e.getKey(), x -> new ArrayList<>())
-					.add(new UnboundMethodMap(target.getClass(), e.getValue()));
+
+		clazz = target.getClass();
+		Map<String, BoundMethod> startGenMap = new HashMap<>();
+		while (clazz != null) {
+			// take another pass looking for StartGen methods. use exist NPred to populate info
+			for (final Method method : clazz.getDeclaredMethods()) {
+				if (method.isAnnotationPresent(StartGen.class)) {
+					StartGen ann = method.getAnnotation(StartGen.class);
+					BoundMethod npredMethod = methodMap.get(NPred.class).get(ann.value());
+					if (npredMethod != null) {
+						startGenMap.put(ann.value(),
+							new BoundMethod(target, method, npredMethod.info));
+					}
+					else { // regex or literal
+						if (StartGen.LITERAL.equals(ann.value())) {
+							startGenMap.putIfAbsent(StartGen.LITERAL,
+								new BoundMethod(target, method, LITERAL_METHOD_INFO));
+						}
+						else if (StartGen.REGEX.equals(ann.value())) {
+							startGenMap.putIfAbsent(StartGen.REGEX,
+								new BoundMethod(target, method, REGEX_METHOD_INFO));
+						}
+						else {
+							throw new RuntimeException(
+								"StartGen with unmatched node predicate: " + ann.value());
+						}
+					}
+				}
+			}
+
+			clazz = clazz.getSuperclass();
 		}
+		methodMap.put(StartGen.class, startGenMap);
 	}
 
 	public void clear() {
-		unboundMethodMapMap.clear();
+		methodMap.clear();
 	}
 
 	@FunctionalInterface
@@ -75,64 +91,22 @@ public class MethodManager {
 	}
 
 	public void forEachPred(Class<? extends Annotation> ann, PredEnumerator pe) {
-		for (UnboundMethodMap umm : unboundMethodMapMap.getOrDefault(ann,
-			Collections.emptyList())) {
-			for (Entry<String, Method> e : umm.methods.entrySet()) {
-				Method m = e.getValue();
-				String predicateName = e.getKey();
-				XPred xpred = new XPred(m.getAnnotation(ann));
-				String args;
-				if (xpred.args.length > 0) {
-					args = '(' + Arrays.stream(xpred.args).collect(Collectors.joining(",")) + ')';
-				}
-				else {
-					args = "";
-				}
-				pe.apply(predicateName + args, xpred.description);
+		Map<String, BoundMethod> map = methodMap.getOrDefault(ann, Collections.emptyMap());
+		for (Entry<String, BoundMethod> e : map.entrySet()) {
+			BoundMethod m = e.getValue();
+			String predicateName = e.getKey();
+			String args;
+			if (m.info.args != null && m.info.args.length > 0) {
+				args = '(' + Arrays.stream(m.info.args).collect(Collectors.joining(",")) + ')';
 			}
-		}
-	}
-
-	public static class BoundMethod {
-		public final Object obj;
-		public final Method method;
-
-		public BoundMethod(Object obj, Method method) {
-			this.obj = obj;
-			this.method = method;
-		}
-	}
-
-	/**
-	 * find a previously added annotated method which binds to one of the given bindings.
-	 * 
-	 * If an unbound method exists with the given annotation and name, but there is no binding, null is returned.
-	 * 
-	 * @param ann EPred or NPred annotation type
-	 * @param name from the annotation
-	 * @return a bound method or null
-	 */
-	public BoundMethod find(Class<? extends Annotation> ann, String name) {
-		List<UnboundMethodMap> unboundMethodMaps = unboundMethodMapMap.get(ann);
-		if (unboundMethodMaps != null) {
-			for (UnboundMethodMap unboundMethodMap : unboundMethodMaps) {
-				Method method = unboundMethodMap.getMethod(name);
-				if (method != null) {
-					return new BoundMethod(target, method);
-				}
+			else {
+				args = "";
 			}
-		}
-		return null;
-	}
-
-	public void validateBindings(Map<Class<?>, Object> classBindings) {
-		for (List<UnboundMethodMap> ubmml : unboundMethodMapMap.values()) {
-			for (UnboundMethodMap ubmm : ubmml) {
-				if (!classBindings.containsKey(ubmm.targetClass)) {
-					throw new RuntimeException("no binding for " + ubmm.targetClass.toString());
-				}
-			}
+			pe.apply(predicateName + args, m.info.description);
 		}
 	}
 
+	public Map<String, BoundMethod> getMethodMap(Class<? extends Annotation> ann) {
+		return methodMap.get(ann);
+	}
 }

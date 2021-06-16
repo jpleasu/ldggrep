@@ -19,7 +19,8 @@ import java.util.stream.Stream;
 
 import com.github.jpleasu.ldggrep.automata.MappingAutomataObserver;
 import com.github.jpleasu.ldggrep.internal.*;
-import com.github.jpleasu.ldggrep.parser.Expr;
+import com.github.jpleasu.ldggrep.internal.PredicateMachine.StartGenInfo;
+import com.github.jpleasu.ldggrep.parser.*;
 import com.github.jpleasu.ldggrep.util.Pair;
 
 import dk.brics.automaton.*;
@@ -61,21 +62,22 @@ public class LDGMatcher<N, E> {
 		p2s_.clear();
 		eps.clear();
 
-		// make a empty
+		// start with empty matchFSM
 		Automaton.setMinimizeAlways(false);
 		Automaton.setAllowMutate(true);
 		matchFSM.setInitialState(new State());
 		matchFSM.setDeterministic(true);
 
-		first_user_c = 0;
+		nInitialStates = 0;
 
 	}
 
-	// transition labels that only occur from initial to starting node.
-	int first_user_c;
+	// number of initial states - used to create temporary edge labels in the matchFSM
+	int nInitialStates;
 
+	// nInitialStates MUST NOT CHANGE after this is called!
 	Integer e2c(E e) {
-		return e2c_.computeIfAbsent(e, ee -> (e2c_.size() + first_user_c));
+		return e2c_.computeIfAbsent(e, ee -> (e2c_.size() + nInitialStates));
 	}
 
 	State p2s(Pair<Integer, N> p) {
@@ -96,22 +98,40 @@ public class LDGMatcher<N, E> {
 	 * @param graph the graph to match
 	 * @return the match found
 	 */
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked" })
 	public LDGMatch<N, E> match(LDG<N, E> graph) {
 		clearMatchData();
 
-		State s0 = matchFSM.getInitialState();
+		Stream<N> incomingMemory = model.incomingMemory.values().stream().flatMap(Set::stream);
 
-		Stream<N> startNodes = graph.startNodes();
-		startNodes =
-			Stream.concat(startNodes, model.incomingMemory.values().stream().flatMap(Set::stream));
+		int initialState = PredicateMachine.INITIAL_STATE;
+		Stream<N> startNodes = null;
+
+		StartGenInfo<N, E> startGenInfo = predicateMachine.getStartGenInfo();
+		if (startGenInfo != null) {
+			Stream<N> genStarts = startGenInfo.gen.startNodes(graph);
+			if (genStarts != null) {
+				// advance machine state and filter incoming memory
+				initialState = startGenInfo.targetState;
+				startNodes = Stream.concat(genStarts,
+					incomingMemory.filter(n -> startGenInfo.pred.matches(0, n)));
+			}
+		}
+
+		if (startNodes == null) {
+			// if there was no startGen or if the startGen returned null, use all start nodes
+			startNodes = Stream.concat(graph.startNodes(), incomingMemory);
+		}
+
+		// stupid java
+		int finalInitialState = initialState;
 
 		Set<Pair<Integer, N>> front =
-			startNodes.map(n -> Pair.of(PredicateMachine.INITIAL_STATE, n))
-					.collect(Collectors.toSet());
+			startNodes.map(n -> Pair.of(finalInitialState, n)).collect(Collectors.toSet());
 
+		State s0 = matchFSM.getInitialState();
 		for (Pair<Integer, N> p : front) {
-			s0.addTransition(new Transition(first_user_c++, p2s(p)));
+			s0.addTransition(new Transition(nInitialStates++, p2s(p)));
 		}
 
 		Set<Pair<Integer, N>> done = new HashSet<>();
@@ -125,18 +145,16 @@ public class LDGMatcher<N, E> {
 					Integer i1 = t.target;
 
 					if (t instanceof Eps) {
-						Pair<Integer, N> p1;
-						// epsilons advance only the predicate machine state
-						p1 = Pair.of(i1, n0);
+						// epsilons advance only the predicate machine state (equivalent to an always true node predicate)
+						Pair<Integer, N> p1 = Pair.of(i1, n0);
 						newfront.add(p1);
 						addEps(p0, p1);
 					}
 					else if (t instanceof NTrans) {
-						Pair<Integer, N> p1;
+						// node predicates advance only the machine state, and only if the node component matches
 						NTrans<N> x = (NTrans<N>) t;
-						// state predicates advance only machine states that match the predicate
 						if (x.p.matches(i0, n0)) {
-							p1 = Pair.of(i1, n0);
+							Pair<Integer, N> p1 = Pair.of(i1, n0);
 							newfront.add(p1);
 							addEps(p0, p1);
 						}
@@ -191,7 +209,7 @@ public class LDGMatcher<N, E> {
 
 		for (Pair<Integer, N> p : front) {
 			distanceToNode.put(p, 0);
-			s0.addTransition(new Transition(first_user_c++, p2s(p)));
+			s0.addTransition(new Transition(nInitialStates++, p2s(p)));
 		}
 
 		Set<Pair<Integer, N>> done = new HashSet<>();
@@ -361,9 +379,7 @@ public class LDGMatcher<N, E> {
 		match.finalStates = matchFSM.getAcceptStatesFrom(match.initialStates);
 
 		match.s2ps = mao.getMap();
-		match.c2e =
-			c2e.entrySet().stream().collect(Collectors.toMap(Entry::getKey, e -> e.getValue()));
-
+		match.c2e = c2e;
 		model.copyOutgoingMemory(match);
 		return match;
 	}

@@ -1,13 +1,13 @@
 package com.github.jpleasu.ldggrep.parser;
 
-public class StatePred extends Pat {
+public class NodePred extends Pat {
 	public final Predicate p;
 
-	public StatePred(Predicate p) {
+	public NodePred(Predicate p) {
 		this.p = p;
 	}
 
 	public String toString() {
-		return String.format("State(%s)", p);
+		return String.format("Node(%s)", p);
 	}
 }

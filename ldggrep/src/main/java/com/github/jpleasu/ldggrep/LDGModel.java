@@ -9,8 +9,7 @@ import java.util.stream.Collectors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 
-import com.github.jpleasu.ldggrep.internal.Pred;
-import com.github.jpleasu.ldggrep.internal.PredicateBuilder;
+import com.github.jpleasu.ldggrep.internal.*;
 import com.github.jpleasu.ldggrep.parser.Predicate;
 import com.github.jpleasu.ldggrep.util.Pair;
 
@@ -27,9 +26,9 @@ import com.github.jpleasu.ldggrep.util.Pair;
 public class LDGModel<N, E> {
 	protected Random random = new Random();
 
-	/** node memory before filtering by liveness in computeMemory */
+	/** outgoing node memory, after match, before filtering by liveness in computeMemory */
 	protected Map<Integer, Set<Pair<Integer, N>>> storedNodes = new HashMap<>();
-	/** node memory prior to match */
+	/** incoming node memory, prior to match */
 	protected Map<Integer, Set<N>> incomingMemory = new HashMap<>();
 
 	Map<Integer, int[]> counts = new HashMap<>();
@@ -44,14 +43,16 @@ public class LDGModel<N, E> {
 	private Context codeContext;
 	final PredicateBuilder<N> nodeBuilder;
 	final PredicateBuilder<E> edgeBuilder;
+	final GeneratorBuilder<N, E> genBuilder;
 
 	public LDGModel() {
 		this.methodManager = new MethodManager(this);
 
-		this.nodeBuilder = new PredicateBuilder<N>(methodManager, NPred.class, this::nodeToString,
-			this::nodeToCodeObject);
-		this.edgeBuilder = new PredicateBuilder<E>(methodManager, EPred.class, this::edgeToString,
-			this::edgeToCodeObject);
+		this.nodeBuilder = new PredicateBuilder<N>(methodManager.getMethodMap(NPred.class),
+			this::nodeToString, this::nodeToCodeObject);
+		this.edgeBuilder = new PredicateBuilder<E>(methodManager.getMethodMap(EPred.class),
+			this::edgeToString, this::edgeToCodeObject);
+		this.genBuilder = new GeneratorBuilder<>(methodManager.getMethodMap(StartGen.class));
 	}
 
 	/**
@@ -141,6 +142,10 @@ public class LDGModel<N, E> {
 		return nodeBuilder.buildPred(p);
 	}
 
+	public Generator<N, E> buildGenerator(Predicate p) {
+		return genBuilder.buildGen(p);
+	}
+
 	public void setIncomingMemory(Map<Integer, Set<N>> m) {
 		this.incomingMemory = m;
 	}
@@ -180,17 +185,17 @@ public class LDGModel<N, E> {
 
 	@NPred(description = "randomly accept with probability NUM/DENOM", args = { "NUM", "DENOM" })
 	@EPred(description = "randomly accept with probability NUM/DENOM", args = { "NUM", "DENOM" })
-	public boolean rand(int i, N n, int num, int denom) {
+	public <X> boolean rand(int i, X x, int num, int denom) {
 		return random.nextInt(denom) < num;
 	}
 
 	@NPred(description = "accept if P = (hashCode(x) % NPARTS)", args = { "P", "NPARTS" })
 	@EPred(description = "accept if P = (hashCode(x) % NPARTS)", args = { "P", "NPARTS" })
-	public boolean part(int i, N n, int p, int nparts) {
-		int x = (n.hashCode() % nparts);
-		if (x < 0)
-			x += nparts;
-		return (p == x);
+	public <X> boolean part(int i, X x, int p, int nparts) {
+		int xp = (x.hashCode() % nparts);
+		if (xp < 0)
+			xp += nparts;
+		return (p == xp);
 	}
 
 	@NPred(description = "match at most M times during forward pass", args = { "M" })

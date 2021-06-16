@@ -1,24 +1,24 @@
 package com.github.jpleasu.ldggrep.internal;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Method;
 
-import com.github.jpleasu.ldggrep.EPred;
-import com.github.jpleasu.ldggrep.NPred;
+import com.github.jpleasu.ldggrep.*;
 
 /**
- * There is no inheritance for annotations, so use reflection.  
+ * method information parsed from an LDGGrep annotation  
  */
-public class XPred {
+public class MethodInfo {
 	private final String name;
 	public final String description;
 	public final String[] args;
 
-	public XPred(Class<? extends Annotation> annClass, Method method) {
-		this(method.getAnnotation(annClass));
+	public MethodInfo(String name, String[] args, String description) {
+		this.name = name;
+		this.args = args;
+		this.description = description;
 	}
 
-	public XPred(Annotation ann) {
+	public MethodInfo(Annotation ann) {
 		if (ann instanceof NPred) {
 			this.name = ((NPred) ann).value();
 			this.args = ((NPred) ann).args();

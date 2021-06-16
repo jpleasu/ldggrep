@@ -159,7 +159,7 @@ Pat pred(): {
   }
   | <DOT> { return new AnyPred(); }
   | ( "<" p=pred()  ">" ) {
-    return new StatePred((Predicate)p);
+    return new NodePred((Predicate)p);
   }
   | ( "!" (p=pred() | "(" p=pred() ")" ))  {
     boolean b=true;

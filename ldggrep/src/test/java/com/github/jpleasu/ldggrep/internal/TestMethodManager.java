@@ -7,7 +7,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 import com.github.jpleasu.ldggrep.*;
-import com.github.jpleasu.ldggrep.MethodManager.BoundMethod;
 
 public class TestMethodManager {
 
@@ -46,17 +45,17 @@ public class TestMethodManager {
 		});
 		assertEquals(1, ai.get());
 
-		BoundMethod boundMethod = mm.find(NPred.class, "node_pred");
+		BoundMethod boundMethod = mm.getMethodMap(NPred.class).get("node_pred");
 		assertNotNull(boundMethod);
 		assertEquals(obj, boundMethod.obj);
 		assertEquals(obj.getClass().getMethod("node_pred", Object.class), boundMethod.method);
 
-		boundMethod = mm.find(EPred.class, "edge_pred");
+		boundMethod = mm.getMethodMap(EPred.class).get("edge_pred");
 		assertNotNull(boundMethod);
 		assertEquals(obj, boundMethod.obj);
 		assertEquals(obj.getClass().getMethod("edge_pred", Object.class), boundMethod.method);
 
-		boundMethod = mm.find(EPred.class, "not_a_pred");
+		boundMethod = mm.getMethodMap(EPred.class).get("not_a_pred");
 		assertNull(boundMethod);
 	}
 
@@ -94,6 +93,5 @@ public class TestMethodManager {
 			ai.incrementAndGet();
 		});
 		assertEquals(1, ai.get());
-
 	}
 }

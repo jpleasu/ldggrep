@@ -23,7 +23,8 @@ public class TestPredicateBuilderWithCode {
 		codeContext = Context.newBuilder("js").allowAllAccess(true).build();
 		xToCode = x -> x;
 		xToString = x -> x;
-		predicateBuilder = new PredicateBuilder<String>(mm, NPred.class, xToString, xToCode);
+		predicateBuilder =
+			new PredicateBuilder<String>(mm.getMethodMap(NPred.class), xToString, xToCode);
 		predicateBuilder.setCodeContext(codeContext);
 	}
 
@@ -60,7 +61,8 @@ public class TestPredicateBuilderWithCode {
 		codeContext = Context.newBuilder("js").allowAllAccess(true).build();
 		xToCode = x -> Integer.parseInt(x);
 		xToString = x -> x;
-		predicateBuilder = new PredicateBuilder<String>(mm, NPred.class, xToString, xToCode);
+		predicateBuilder =
+			new PredicateBuilder<String>(mm.getMethodMap(NPred.class), xToString, xToCode);
 		predicateBuilder.setCodeContext(codeContext);
 	}
 

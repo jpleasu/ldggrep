@@ -3,6 +3,7 @@ package com.github.jpleasu.ldggrep.internal;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -87,8 +88,8 @@ public class TestMatcher {
 
 	public static class TestModel extends LDGModel<Node, Edge> {
 		@NPred
-		public boolean is0(Integer n) {
-			return 0 == n;
+		public boolean is0(Node n) {
+			return 0 == n.i;
 		}
 
 		@Override
@@ -188,6 +189,45 @@ public class TestMatcher {
 
 		assertTrue(m.getInitialProjection().equals(Set.of(g.node(0))));
 		assertTrue(m.getFinallProjection().equals(Set.of(g.node(1))));
+	}
+
+	@Test
+	void test_starting_gen() {
+		TestModel model = new TestModel();
+		TestGraph g = new TestGraph();
+		g.addEdge(0, 1);
+		g.addEdge(0, 2);
+		g.addEdge(1, 2);
+		g.addEdge(2, 3);
+
+		final String PAT = "<is0> /2/";
+
+		LDGMatch<Node, Edge> m;
+		Set<Transition> trans;
+
+		m = new LDGMatcher<>(model, PAT).match(g);
+		assertNotNull(m);
+		assertEquals(Set.of(g.node(0)), m.getInitialProjection());
+		trans = m.initialStates.iterator().next().getTransitions();
+		assertEquals(1, trans.size());
+
+		AtomicBoolean b = new AtomicBoolean(false);
+		TestModel model2 = new TestModel() {
+			@StartGen("is0")
+			Stream<Node> gen0(TestGraph graph) {
+				b.set(true);
+				return Stream.of(graph.node(0));
+			}
+		};
+		m = new LDGMatcher<>(model2, PAT).match(g);
+		// we must have hit the startgen
+		assertTrue(b.get());
+
+		assertNotNull(m);
+		assertEquals(Set.of(g.node(0)), m.getInitialProjection());
+		trans = m.initialStates.iterator().next().getTransitions();
+		assertEquals(1, trans.size());
+
 	}
 
 }
