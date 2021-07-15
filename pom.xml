@@ -156,11 +156,11 @@
 			</modules>
 		</profile>
 		<profile>
-			<id>ghidra_10.0</id>
+			<id>ghidra_10.0.1</id>
 			<activation>
 				<property>
 					<name>ghidra.version</name>
-					<value>10.0</value>
+					<value>10.0.1</value>
 				</property>
 			</activation>
 			<properties>
