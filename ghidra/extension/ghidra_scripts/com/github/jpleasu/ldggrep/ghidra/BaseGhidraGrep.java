@@ -19,7 +19,7 @@ import ghidra.app.util.query.TableService;
 import ghidra.framework.Application;
 import ghidra.framework.GModule;
 import ghidra.framework.plugintool.PluginTool;
-import ghidra.graph.visualization.DefaultGraphDisplay;
+import ghidra.graph.visualization.DefaultGraphDisplayWrapper;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.listing.Program;
@@ -248,9 +248,9 @@ abstract public class BaseGhidraGrep<N, E> extends GhidraScript {
 				graphDisplayBroker.getDefaultGraphDisplayProvider();
 
 			GraphDisplay graphDisplay = displayProvider.getGraphDisplay(false, monitor);
-			if (graphDisplay instanceof DefaultGraphDisplay) {
+			if (graphDisplay instanceof DefaultGraphDisplayWrapper) {
 				GhidraJgtGraphViewer<N, E> graphViewer = new GhidraJgtGraphViewer<>(this, model,
-					match, (DefaultGraphDisplay) graphDisplay);
+					match, (DefaultGraphDisplayWrapper) graphDisplay);
 				monitor.setProgress(3);
 				graphViewer.show();
 			}

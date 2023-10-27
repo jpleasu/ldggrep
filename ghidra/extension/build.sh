@@ -11,8 +11,7 @@ rp() {
   echo "$x"
 }
 
-D="$( cd "$( dirname "$( rp "${BASH_SOURCE[0]}" )" )" && cd -P "$( dirname "$SOURCE" )" && pwd )"
-
+D="$( cd "$( dirname "$( realpath "${BASH_SOURCE[0]}" )" )" && cd -P "$( dirname "$SOURCE" )" && pwd )"
 
 
 
@@ -21,7 +20,7 @@ if [[ "$#" -eq 0 ]]; then
 	echo
 	echo "  where"
 	echo "    version is something like 9.2.3 and "
-	echo "      distribution is somethign like PUBLIC"
+	echo "      distribution is something like PUBLIC"
 	exit 1
 fi
 
@@ -39,7 +38,7 @@ trap cleanup EXIT
 GHIDRA_VERSION="$1"
 GHIDRA_DISTRIBUTION="${2:-PUBLIC}"
 
-deps_dir=$(rp "$D/target/dependencies_${GHIDRA_VERSION}")
+deps_dir=$(realpath "$D/target/dependencies_${GHIDRA_VERSION}")
 if [ ! -d "$deps_dir" ]; then
 	echo "can't find dependencies dir $deps_dir"
 	echo "  build with mvn first.  From root of ldggrep repo:"
@@ -67,14 +66,15 @@ EOT
 cp -r "$D/data" ${tmp_extension}/
 cp -r "$D/ghidra_scripts" ${tmp_extension}/
 
-cp -u ${deps_dir}/* ${tmp_extension}/lib
+cp -f ${deps_dir}/* ${tmp_extension}/lib
 
 echo remove module-info from jars in lib
 for x in ${tmp_extension}/lib/*.jar; do
 	zip -qd $x ./module-info.class ./module-info.java 2>/dev/null 1>&2 || true
 done
 
-ZIPNAME=ghidra_${GHIDRA_VERSION}_${GHIDRA_DISTRIBUTION}_`date +'%Y%m%d'`_${EXTENSION_NAME,,}.zip
+# ZIPNAME=ghidra_${GHIDRA_VERSION}_${GHIDRA_DISTRIBUTION}_`date +'%Y%m%d'`_${EXTENSION_NAME,,}.zip
+ZIPNAME=ghidra_${GHIDRA_VERSION}_${GHIDRA_DISTRIBUTION}_`date +'%Y%m%d'`_${EXTENSION_NAME}.zip
 rm -f "${ZIPNAME}"
 ( cd "$tmp_dir" && zip -r "${D}/target/${ZIPNAME}" "${EXTENSION_NAME}" )
 

@@ -89,8 +89,8 @@ appear in the query expression, the table will be empty.
 
 ## Building the Ghidra extension (on Linux)
 ```bash
-mvn package -Dghidra.version=9.2.3
-ls -l ./ghidra/extension/target/ghidra_9.2.3_*_ldggrep.zip
+mvn package -Dghidra.version=10.4
+ls -l ./ghidra/extension/target/ghidra_10.4_*_ldggrep.zip
 ```
 (Maven calls the Bash script [`ghidra/extension/build.sh`](ghidra/extension/build.sh), so for now building
 the extension depends on Bash)

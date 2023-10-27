@@ -156,6 +156,20 @@
 			</modules>
 		</profile>
 		<profile>
+			<id>ghidra_10.4</id>
+			<activation>
+				<property>
+					<name>ghidra.version</name>
+					<value>10.4</value>
+				</property>
+			</activation>
+			<properties>
+				<ldggrep.graphing.variant>2</ldggrep.graphing.variant>
+				<jgrapht.version>1.5.1</jgrapht.version>
+				<jungrapht.version>1.4</jungrapht.version>
+			</properties>
+		</profile>
+		<profile>
 			<id>ghidra_10.0.1</id>
 			<activation>
 				<property>
