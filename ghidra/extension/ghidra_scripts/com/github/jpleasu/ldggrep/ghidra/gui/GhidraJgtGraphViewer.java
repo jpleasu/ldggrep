@@ -18,6 +18,7 @@ import com.github.jpleasu.ldggrep.util.Pair;
 import docking.action.builder.ActionBuilder;
 import ghidra.graph.visualization.DefaultGraphDisplay;
 import ghidra.graph.visualization.DefaultGraphDisplayComponentProvider;
+import ghidra.graph.visualization.DefaultGraphDisplayWrapper;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSet;
 import ghidra.service.graph.*;
@@ -25,9 +26,8 @@ import resources.Icons;
 import resources.MultiIcon;
 import resources.icons.TranslateIcon;
 
-public class GhidraJgtGraphViewer<N, E>
-		extends JgtGraphViewer<N, E, AttributedVertex, AttributedEdge> {
-	DefaultGraphDisplay graphDisplay;
+public class GhidraJgtGraphViewer<N, E> extends JgtGraphViewer<N, E, AttributedVertex, AttributedEdge> {
+	DefaultGraphDisplayWrapper graphDisplay;
 	final DefaultGraphDisplayComponentProvider componentProvider;
 	final LayoutModel<AttributedVertex> layoutModel;
 	final BaseGhidraGrep<N, E> scr;
@@ -35,23 +35,27 @@ public class GhidraJgtGraphViewer<N, E>
 	final Map<String, Set<Pair<Integer, N>>> vtid2ps;
 	final Map<String, E> etid2e;
 
-	static VisualizationViewer<AttributedVertex, AttributedEdge> getViewer(
-			DefaultGraphDisplay graphDisplay) {
-		return getField(graphDisplay, "viewer");
+	static DefaultGraphDisplay getDelegate(DefaultGraphDisplayWrapper graphDisplay) {
+		return getField(graphDisplay, "delegate");
 	}
 
-	public GhidraJgtGraphViewer(BaseGhidraGrep<N, E> scr, LDGModel<N, E> model,
-			LDGMatch<N, E> match, DefaultGraphDisplay graphDisplay) {
+	static VisualizationViewer<AttributedVertex, AttributedEdge> getViewer(DefaultGraphDisplayWrapper graphDisplay) {
+		return getField(getDelegate(graphDisplay), "viewer");
+	}
+
+	public GhidraJgtGraphViewer(BaseGhidraGrep<N, E> scr, LDGModel<N, E> model, LDGMatch<N, E> match,
+			DefaultGraphDisplayWrapper graphDisplay) {
 		super(model, match, getViewer(graphDisplay));
 
 		this.scr = scr;
 		this.graphDisplay = graphDisplay;
 
-		componentProvider = getField(graphDisplay, "componentProvider");
+		componentProvider = getField(getDelegate(graphDisplay), "componentProvider");
 		layoutModel = viewer.getVisualizationModel().getLayoutModel();
 
 		GhidraJgtGraphBuilder<N, E> graphBuilder = new GhidraJgtGraphBuilder<>(model, match);
-		this.graph = new AttributedGraph(false);
+		this.graph = new AttributedGraph("LDGGrep",
+				new GraphType("LDGGrep Graph", "LDGGrep Graph Type", List.of(), List.of()), "LDGGrep", false);
 		graphBuilder.buildGraph(graph);
 		this.vtid2ps = graphBuilder.vtid2ps;
 		this.etid2e = graphBuilder.etid2e;
@@ -108,18 +112,14 @@ public class GhidraJgtGraphViewer<N, E>
 
 	void addActions() {
 		new ActionBuilder("Jiggle", "GraphServices").toolBarIcon(Icons.NOT_ALLOWED_ICON)
-				.description("Jiggle overlapping labels elements to be more readable")
-				.onAction(context -> jiggle())
+				.description("Jiggle overlapping labels elements to be more readable").onAction(context -> jiggle())
 				.buildAndInstallLocal(componentProvider);
 
 		new ActionBuilder("Contract", "GraphServices").toolBarIcon(Icons.COLLAPSE_ALL_ICON)
-				.description("Contract nodes")
-				.onAction(context -> contract())
-				.buildAndInstallLocal(componentProvider);
+				.description("Contract nodes").onAction(context -> contract()).buildAndInstallLocal(componentProvider);
 
 		new ActionBuilder("Expand", "GraphServices").toolBarIcon(Icons.EXPAND_ALL_ICON)
-				.description("Expand nodes to be more readable")
-				.onAction(context -> expand())
+				.description("Expand nodes to be more readable").onAction(context -> expand())
 				.buildAndInstallLocal(componentProvider);
 
 		MultiIcon ico = new MultiIcon(Icons.LEFT_ICON, new TranslateIcon(Icons.RIGHT_ICON, 5, 0) {
@@ -128,19 +128,15 @@ public class GhidraJgtGraphViewer<N, E>
 				return super.getIconWidth() + 5;
 			}
 		});
-		new ActionBuilder("XStrech", "GraphServices").toolBarIcon(ico)
-				.description("Horizontally stretch")
-				.onAction(context -> xstretch())
-				.buildAndInstallLocal(componentProvider);
+		new ActionBuilder("XStrech", "GraphServices").toolBarIcon(ico).description("Horizontally stretch")
+				.onAction(context -> xstretch()).buildAndInstallLocal(componentProvider);
 
 		new ActionBuilder("Rotate90", "GraphServices").toolBarIcon(Icons.REFRESH_ICON)
-				.description("Rotate graph 90 degrees")
-				.onAction(context -> rotate90())
+				.description("Rotate graph 90 degrees").onAction(context -> rotate90())
 				.buildAndInstallLocal(componentProvider);
 
 		new ActionBuilder("Close", "GraphServices").description("Close graph")
-				.keyBinding(KeyStroke.getKeyStroke("ctrl W"))
-				.onAction(context -> componentProvider.closeComponent())
+				.keyBinding(KeyStroke.getKeyStroke("ctrl W")).onAction(context -> componentProvider.closeComponent())
 				.buildAndInstallLocal(componentProvider);
 	}
 
@@ -149,10 +145,16 @@ public class GhidraJgtGraphViewer<N, E>
 		return super.getHelpText() + "\n<b>ctrl W</b> <i>closes</i> graph window\n";
 	}
 
+	public int getGraphSize() {
+		return graph.getVertexCount();
+	}
+
 	public void show() {
 		addActions();
-
 		configure();
-		graphDisplay.setGraph(graph, getClass().getName(), false, scr.getMonitor());
+		var options = new GraphDisplayOptions(graph.getGraphType());
+		options.setMaxNodeCount(50000);
+		graphDisplay.setGraph(graph, options, getClass().getName(), false,
+				scr.getMonitor());
 	}
 }

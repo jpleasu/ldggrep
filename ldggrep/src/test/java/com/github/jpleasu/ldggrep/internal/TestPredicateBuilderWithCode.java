@@ -7,7 +7,10 @@ import java.util.function.Function;
 import org.graalvm.polyglot.Context;
 import org.junit.jupiter.api.Test;
 
-import com.github.jpleasu.ldggrep.*;
+import com.github.jpleasu.ldggrep.MethodManager;
+import com.github.jpleasu.ldggrep.LDGModel;
+import com.github.jpleasu.ldggrep.NPred;
+
 import com.github.jpleasu.ldggrep.parser.CodePred;
 
 public class TestPredicateBuilderWithCode {
@@ -20,7 +23,10 @@ public class TestPredicateBuilderWithCode {
 
 	public void setup_basic() {
 		mm = new MethodManager(new LDGModel<>());
-		codeContext = Context.newBuilder("js").allowAllAccess(true).build();
+		codeContext = Context.newBuilder("js")
+				.option("engine.WarnInterpreterOnly", "false")
+				.allowAllAccess(true)
+				.build();
 		xToCode = x -> x;
 		xToString = x -> x;
 		predicateBuilder =
@@ -58,7 +64,10 @@ public class TestPredicateBuilderWithCode {
 
 	public void setup_with_int_code_converter() {
 		mm = new MethodManager(new LDGModel<>());
-		codeContext = Context.newBuilder("js").allowAllAccess(true).build();
+		codeContext = Context.newBuilder("js")
+				.option("engine.WarnInterpreterOnly", "false")
+				.allowAllAccess(true)
+				.build();
 		xToCode = x -> Integer.parseInt(x);
 		xToString = x -> x;
 		predicateBuilder =

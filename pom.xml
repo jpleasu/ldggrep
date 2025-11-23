@@ -9,24 +9,24 @@
 	<packaging>pom</packaging>
 
 	<properties>
-		<revision>1.0</revision>
+		<revision>1.2</revision>
 
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<maven.compiler.source>11</maven.compiler.source>
-		<maven.compiler.target>11</maven.compiler.target>
-		<graalvm.version>21.1.0</graalvm.version>
-		<junit.version>5.7.1</junit.version>
+		<maven.compiler.source>21</maven.compiler.source>
+		<maven.compiler.target>21</maven.compiler.target>
+
+		<graalvm.version>25.0.1</graalvm.version>
+		<jgrapht.version>1.5.1</jgrapht.version>
+		<jungrapht.version>1.3</jungrapht.version>
+
+		<junit.version>5.14.0</junit.version>
 
 	</properties>
 
 	<modules>
 		<module>ldggrep</module>
-
 		<module>graphing</module>
-		<module>graphing-variant-1</module>
-		<module>graphing-variant-2</module>
 	</modules>
-
 
 
 	<build>
@@ -34,18 +34,18 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>2.22.2</version>
+				<version>3.5.4</version>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-failsafe-plugin</artifactId>
-				<version>2.22.2</version>
+				<version>3.5.4</version>
 			</plugin>
 
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-enforcer-plugin</artifactId>
-				<version>3.0.0-M3</version>
+				<version>3.6.2</version>
 				<executions>
 					<execution>
 						<id>default-cli</id>
@@ -56,7 +56,7 @@
 							<rules>
 								<!-- <dependencyConvergence /> -->
 								<requireMavenVersion>
-									<version>3.5.0</version>
+									<version>3.8.0</version>
 								</requireMavenVersion>
 							</rules>
 						</configuration>
@@ -68,23 +68,23 @@
 			<plugins>
 				<plugin>
 					<artifactId>maven-jar-plugin</artifactId>
-					<version>3.2.0</version>
+					<version>3.5.0</version>
 				</plugin>
 				<plugin>
 					<groupId>org.apache.felix</groupId>
 					<artifactId>maven-bundle-plugin</artifactId>
-					<version>5.1.2</version>
+					<version>6.0.0</version>
 				</plugin>
 
 				<plugin>
 					<artifactId>maven-compiler-plugin</artifactId>
-					<version>3.8.1</version>
+					<version>3.14.1</version>
 				</plugin>
 
 				<plugin>
 					<groupId>org.codehaus.mojo</groupId>
 					<artifactId>build-helper-maven-plugin</artifactId>
-					<version>3.2.0</version>
+					<version>3.6.1</version>
 				</plugin>
 
 				<plugin>
@@ -107,14 +107,40 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-dependency-plugin</artifactId>
-					<version>3.1.2</version>
+					<version>3.9.0</version>
 				</plugin>
 
 				<plugin>
 					<artifactId>exec-maven-plugin</artifactId>
 					<groupId>org.codehaus.mojo</groupId>
-					<version>3.0.0</version>
+					<version>3.6.2</version>
 				</plugin>
+
+				<plugin>
+					<groupId>org.eclipse.m2e</groupId>
+					<artifactId>lifecycle-mapping</artifactId>
+					<version>1.0.0</version>
+					<configuration>
+						<lifecycleMappingMetadata>
+							<pluginExecutions>
+								<pluginExecution>
+									<pluginExecutionFilter>
+										<groupId>org.codehaus.mojo</groupId>
+										<artifactId>javacc-maven-plugin</artifactId>
+										<versionRange>[3.1.1,)</versionRange>
+										<goals>
+											<goal>javacc</goal>
+										</goals>
+									</pluginExecutionFilter>
+									<action>
+										<execute />
+									</action>
+								</pluginExecution>
+							</pluginExecutions>
+						</lifecycleMappingMetadata>
+					</configuration>
+				</plugin>
+
 
 			</plugins>
 		</pluginManagement>
@@ -135,11 +161,6 @@
 			<activation>
 				<activeByDefault>true</activeByDefault>
 			</activation>
-			<properties>
-				<ldggrep.graphing.variant>2</ldggrep.graphing.variant>
-				<jgrapht.version>1.5.1</jgrapht.version>
-				<jungrapht.version>1.3</jungrapht.version>
-			</properties>
 			<modules>
 				<module>tools</module>
 			</modules>
@@ -154,34 +175,6 @@
 			<modules>
 				<module>ghidra</module>
 			</modules>
-		</profile>
-		<profile>
-			<id>ghidra_10.0.1</id>
-			<activation>
-				<property>
-					<name>ghidra.version</name>
-					<value>10.0.1</value>
-				</property>
-			</activation>
-			<properties>
-				<ldggrep.graphing.variant>2</ldggrep.graphing.variant>
-				<jgrapht.version>1.5.1</jgrapht.version>
-				<jungrapht.version>1.3</jungrapht.version>
-			</properties>
-		</profile>
-		<profile>
-			<id>ghidra_9.2.3</id>
-			<activation>
-				<property>
-					<name>ghidra.version</name>
-					<value>9.2.3</value>
-				</property>
-			</activation>
-			<properties>
-				<ldggrep.graphing.variant>1</ldggrep.graphing.variant>
-				<jgrapht.version>1.5.0</jgrapht.version>
-				<jungrapht.version>1.0</jungrapht.version>
-			</properties>
 		</profile>
 	</profiles>
 </project>

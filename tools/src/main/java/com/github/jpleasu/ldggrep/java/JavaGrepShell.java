@@ -29,6 +29,10 @@ import com.github.jpleasu.ldggrep.*;
  */
 
 class JavaModel extends LDGModel<Node, Link<? extends Node, ? extends Node>> {
+	JavaModel() {
+		initializeCodeContext();
+	}
+
 	@NPred(value = "class", description = "a class or interface")
 	public boolean clazz(Node n) {
 		return n instanceof ClassNode;
@@ -54,7 +58,9 @@ class JavaModel extends LDGModel<Node, Link<? extends Node, ? extends Node>> {
 		return l instanceof CallLink;
 	}
 
-	@NPred(description = "alias of \"</^(java\\.util\\.|java\\.lang\\.)/>\".. stuff you probably don't want to chain through")
+	@NPred(
+		description = "alias of \"</^(java\\.util\\.|java\\.lang\\.)/>\".. stuff you probably don't want to chain through"
+	)
 	public boolean corejava(Node n) {
 		String na = null;
 		if (n instanceof ClassNode) {
@@ -69,7 +75,9 @@ class JavaModel extends LDGModel<Node, Link<? extends Node, ? extends Node>> {
 		return false;
 	}
 
-	@EPred(description = "alias of \"(call|implementedby|fallthrough) <!corejava>\".. probably what you actually want")
+	@EPred(
+		description = "alias of \"(call|implementedby|fallthrough) <!corejava>\".. probably what you actually want"
+	)
 	public boolean callx(Link<? extends Node, ? extends Node> l) {
 		return (call(l) || implementedby(l) | fallthrough(l)) && !corejava(l.dst);
 	}
@@ -84,12 +92,16 @@ class JavaModel extends LDGModel<Node, Link<? extends Node, ? extends Node>> {
 		return l instanceof RefLink;
 	}
 
-	@EPred(description = "if ChildClass has no method \"meth\", any calls to it will fallthrough to its parent class, e.g. <ChildClass:meth> fallthrough <ParentClass:meth2>")
+	@EPred(
+		description = "if ChildClass has no method \"meth\", any calls to it will fallthrough to its parent class, e.g. <ChildClass:meth> fallthrough <ParentClass:meth2>"
+	)
 	public boolean fallthrough(Link<? extends Node, ? extends Node> l) {
 		return l instanceof FallsThroughLink;
 	}
 
-	@EPred(description = "if ChildClass implements the method \"meth\" of Parentclass/interface, then <ParentClass::meth> implementedby <ChildClass::meth>")
+	@EPred(
+		description = "if ChildClass implements the method \"meth\" of Parentclass/interface, then <ParentClass::meth> implementedby <ChildClass::meth>"
+	)
 	public boolean implementedby(Link<? extends Node, ? extends Node> l) {
 		return l instanceof ImplementedByLink;
 	}

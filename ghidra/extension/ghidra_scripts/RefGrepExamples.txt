@@ -5,13 +5,13 @@ Call paths starting at main ending at nodes whose name contain "crt", case insen
 :  <"main"> call* </(?i)crt/>
 
 Call paths from main or entry ending in a function reference
-:  </^(main|entry)$> call* ref <func>
+:  </^(main|entry)$/> call* ref <func>
 
 Call paths from main or entry of length up to 3 that end in an import
-:  </^(main|entry)$> call{,3} <imp>
+:  </^(main|entry)$/> call{,3} <imp>
 
 Call paths from main or entry of length up to 3 that end in a reference to a string
-:  </^(main|entry)$> call{,3} ref <str>
+:  </^(main|entry)$/> call{,3} ref <str>
   
 For each function that calls to a print function, find string references within 3 calls.
 :  <func> <sto(0)> call </print/> ; <mem(0)> call{,3} ref <sto(0)> <str>

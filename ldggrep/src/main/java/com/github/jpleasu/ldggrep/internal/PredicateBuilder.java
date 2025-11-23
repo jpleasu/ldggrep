@@ -7,7 +7,9 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.graalvm.polyglot.*;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.Source;
 
 import com.github.jpleasu.ldggrep.BoundMethod;
 import com.github.jpleasu.ldggrep.parser.*;
@@ -174,7 +176,7 @@ public class PredicateBuilder<X> {
 			methodPredicateCache.computeIfAbsent(bwp.toString(), k -> buildMethodPredicate(bwp));
 		if (pred == null) {
 			throw new RuntimeException(
-				String.format("unknown barework predicate \"%s\"", bwp.name));
+				String.format("unknown bareword predicate \"%s\"", bwp.name));
 		}
 		return pred;
 	}

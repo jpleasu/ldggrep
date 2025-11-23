@@ -23,7 +23,14 @@ import org.jungrapht.visualization.MultiLayerTransformer.Layer;
 import org.jungrapht.visualization.RenderContext;
 import org.jungrapht.visualization.VisualizationServer.Paintable;
 import org.jungrapht.visualization.VisualizationViewer;
+import org.jungrapht.visualization.VisualizationViewer.GraphMouse;
 import org.jungrapht.visualization.annotations.MultiSelectedVertexPaintable;
+import org.jungrapht.visualization.control.DefaultGraphMouse;
+import org.jungrapht.visualization.control.RegionSelectingGraphMousePlugin;
+import org.jungrapht.visualization.control.RotatingGraphMousePlugin;
+import org.jungrapht.visualization.control.ScalingGraphMousePlugin;
+import org.jungrapht.visualization.control.SelectingGraphMousePlugin;
+import org.jungrapht.visualization.control.TranslatingGraphMousePlugin;
 import org.jungrapht.visualization.layout.model.LayoutModel;
 import org.jungrapht.visualization.layout.model.Point;
 import org.jungrapht.visualization.layout.model.Rectangle;
@@ -36,15 +43,15 @@ import com.github.jpleasu.ldggrep.LDGMatch;
 import com.github.jpleasu.ldggrep.LDGModel;
 import com.github.jpleasu.ldggrep.util.Pair;
 
-abstract public class JgtGraphViewer<N, E, VertexT, EdgeT>
-		extends JgtGraphViewerVariant<N, E, VertexT, EdgeT> {
+abstract public class JgtGraphViewer<N, E, VertexT, EdgeT> {
 
 	final protected LDGModel<N, E> model;
 	final protected LDGMatch<N, E> match;
+	final protected VisualizationViewer<VertexT, EdgeT> viewer;
 
 	public JgtGraphViewer(LDGModel<N, E> model, LDGMatch<N, E> match,
 			VisualizationViewer<VertexT, EdgeT> viewer) {
-		super(viewer);
+		this.viewer = viewer;
 		this.model = model;
 		this.match = match;
 	}
@@ -262,8 +269,6 @@ abstract public class JgtGraphViewer<N, E, VertexT, EdgeT>
 					}
 				});
 
-		// handle version specific reconfiguration
-		variantConfigure();
 	}
 
 	protected void rotate90() {
@@ -450,4 +455,47 @@ abstract public class JgtGraphViewer<N, E, VertexT, EdgeT>
 			helpDialog.setVisible(!helpDialog.isVisible());
 		}
 	}
+
+	protected GraphMouse createGraphMouse() {
+		return new DefaultGraphMouse<>(DefaultGraphMouse.builder().vertexSelectionOnly(false)) {
+			public void loadPlugins() {
+				add(new SelectingGraphMousePlugin<>(SelectingGraphMousePlugin.builder()
+						.singleSelectionMask(InputEvent.BUTTON1_DOWN_MASK)
+						.toggleSingleSelectionMask(
+							InputEvent.BUTTON1_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK)));
+				add(new RegionSelectingGraphMousePlugin<>());
+				add(TranslatingGraphMousePlugin.builder()
+						.translatingMask(InputEvent.BUTTON1_DOWN_MASK)
+						.build());
+				add(RotatingGraphMousePlugin.builder()
+						.rotatingMask(InputEvent.BUTTON1_DOWN_MASK | InputEvent.SHIFT_DOWN_MASK)
+						.build());
+				add(new ScalingGraphMousePlugin());
+				setPluginsLoaded();
+			}
+		};
+	}
+
+	protected String getHelpText() {
+		//@formatter:off
+		return 
+				"[press <b>escape</b> to close help window]\n"+
+				"\n"+		
+				"without modifiers:\n"+
+				"  <b>left click< and drag</b> <i>pans</i>\n"+
+				"with <b>shift</b>:\n"+
+				"  <b>left click and drag</b> <i>rotates</i> about center of view\n"+
+				"with <b>ctrl</b>:\n"+
+				"  <b>left click</b> <i>selects</i>\n" +
+				"  <b>left click</b> on vertex and <b>drag</b> (selects and) <i>moves</i> selection\n"+
+				"     o/w <i>selects vertices in rectangle</i>\n"+
+				"with <b>ctrl+shift</b>:\n"+
+				"  <b>left click</b> <i>adds</i> to selection\n" +
+				"  <b>left click</b> on vertex and <b>drag</b> (adds to selection and) <i>moves</i>\n"+
+				"     o/w <i>adds vertices in rectangle</i> to selection\n"+
+				""
+				;
+		//@formatter:on
+	}
+
 }

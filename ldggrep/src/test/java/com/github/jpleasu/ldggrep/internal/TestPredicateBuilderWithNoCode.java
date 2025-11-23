@@ -12,7 +12,9 @@ import org.junit.jupiter.api.Test;
 
 import com.github.jpleasu.ldggrep.MethodManager;
 import com.github.jpleasu.ldggrep.NPred;
-import com.github.jpleasu.ldggrep.parser.*;
+import com.github.jpleasu.ldggrep.parser.AnyPred;
+import com.github.jpleasu.ldggrep.parser.BarePred;
+import com.github.jpleasu.ldggrep.parser.CodePred;
 
 public class TestPredicateBuilderWithNoCode {
 

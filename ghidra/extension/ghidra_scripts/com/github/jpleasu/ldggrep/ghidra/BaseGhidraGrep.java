@@ -19,7 +19,7 @@ import ghidra.app.util.query.TableService;
 import ghidra.framework.Application;
 import ghidra.framework.GModule;
 import ghidra.framework.plugintool.PluginTool;
-import ghidra.graph.visualization.DefaultGraphDisplay;
+import ghidra.graph.visualization.DefaultGraphDisplayWrapper;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.listing.Program;
@@ -90,7 +90,7 @@ abstract public class BaseGhidraGrep<N, E> extends GhidraScript {
 	protected File getHistorySavePath(Program program) {
 		File projdir = getProjectRootFolder().getProjectLocator().getProjectDir();
 		File f = new File(new File(projdir, "ldggrep"), String.format("%s-%s-%s.txt",
-			this.getClass().getSimpleName(), program.getName(), program.getUniqueProgramID()));
+				this.getClass().getSimpleName(), program.getName(), program.getUniqueProgramID()));
 		return f;
 	}
 
@@ -102,8 +102,7 @@ abstract public class BaseGhidraGrep<N, E> extends GhidraScript {
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private LDG<N, E> getCachedLDG() {
-		Map<Program, LDG> cmodel_cache =
-			modelCache.computeIfAbsent(getClass(), c -> new HashMap<>());
+		Map<Program, LDG> cmodel_cache = modelCache.computeIfAbsent(getClass(), c -> new HashMap<>());
 		return cmodel_cache.computeIfAbsent(currentProgram, (p) -> {
 			printf("Computing new " + getClass().getName() + " LDG for program %s\n", p.getName());
 			return newLDG();
@@ -126,7 +125,7 @@ abstract public class BaseGhidraGrep<N, E> extends GhidraScript {
 
 	private void ensureModule() {
 		if (SystemUtilities.isInDevelopmentMode() &&
-			Application.getModuleRootDir("LDGGrep") == null) {
+				Application.getModuleRootDir("LDGGrep") == null) {
 			Application app = ReflectionUtil.getField(Application.class, null, "app");
 			ApplicationLayout layout = ReflectionUtil.getField(app, "layout");
 			ResourceFile moduleRoot = getSourceFile().getParentFile().getParentFile();
@@ -151,7 +150,7 @@ abstract public class BaseGhidraGrep<N, E> extends GhidraScript {
 
 		LDGGrepHistory qhist = queryHistories.computeIfAbsent(getClass(), c -> new HashMap<>())
 				.computeIfAbsent(currentProgram,
-					p -> new LDGGrepHistory(getHistorySavePath(currentProgram)));
+						p -> new LDGGrepHistory(getHistorySavePath(currentProgram)));
 
 		LDGGrepDialog<N, E> dialog = new LDGGrepDialog<>(this, model, qhist);
 		if (dialog.isCanceled()) {
@@ -170,8 +169,7 @@ abstract public class BaseGhidraGrep<N, E> extends GhidraScript {
 		List<Expr> el;
 		try {
 			el = Expr.parseList(expr_string);
-		}
-		catch (ParseException e) {
+		} catch (ParseException e) {
 			dumpParseException(expr_string, e);
 			return;
 		}
@@ -190,8 +188,7 @@ abstract public class BaseGhidraGrep<N, E> extends GhidraScript {
 				}
 				memory.putAll(match.memory);
 			}
-		}
-		catch (RuntimeException e) {
+		} catch (RuntimeException e) {
 			if (e.getCause() instanceof ParseException) {
 				ParseException ec = (ParseException) e.getCause();
 				dumpParseException(expr_string, ec);
@@ -215,14 +212,13 @@ abstract public class BaseGhidraGrep<N, E> extends GhidraScript {
 						for (Entry<Integer, Set<N>> e : memory.entrySet())
 							for (N n : e.getValue())
 								accumulator.add(new MemoryTableRow(e.getKey(), nodeToAddress(n),
-									model.nodeToString(n)));
+										model.nodeToString(n)));
 					}
 
 				};
 
 				String n = this.getClass().getName() + " results for " + currentProgram.getName();
-				TableComponentProvider<MemoryTableRow> tableProvider =
-					ts.showTable(n, n, tablemodel, n, null);
+				TableComponentProvider<MemoryTableRow> tableProvider = ts.showTable(n, n, tablemodel, n, null);
 				tableProvider.installRemoveItemsAction();
 				tableProvider.setSubTitle(expr_string);
 			};
@@ -240,23 +236,23 @@ abstract public class BaseGhidraGrep<N, E> extends GhidraScript {
 
 			if (graphDisplayBroker == null) {
 				Msg.showError(this, tool.getToolFrame(), "LDGGrep Error",
-					"No graph display providers found: Please add a graph display provider to your tool");
+						"No graph display providers found: Please add a graph display provider to your tool");
 				return;
 			}
 
-			GraphDisplayProvider displayProvider =
-				graphDisplayBroker.getDefaultGraphDisplayProvider();
+			GraphDisplayProvider displayProvider = graphDisplayBroker.getDefaultGraphDisplayProvider();
 
 			GraphDisplay graphDisplay = displayProvider.getGraphDisplay(false, monitor);
-			if (graphDisplay instanceof DefaultGraphDisplay) {
+			if (graphDisplay instanceof DefaultGraphDisplayWrapper) {
 				GhidraJgtGraphViewer<N, E> graphViewer = new GhidraJgtGraphViewer<>(this, model,
-					match, (DefaultGraphDisplay) graphDisplay);
+						match, (DefaultGraphDisplayWrapper) graphDisplay);
 				monitor.setProgress(3);
+
+				printf("graph size: %d\n", graphViewer.getGraphSize());
 				graphViewer.show();
-			}
-			else {
+			} else {
 				Msg.showError(this, null, "Incompatible GraphDisplay",
-					"The default graph provider is incompatible with this version of LDGGrep");
+						"The default graph provider is incompatible with this version of LDGGrep");
 			}
 
 		}

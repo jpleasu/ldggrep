@@ -113,6 +113,7 @@ public class LDGModel<N, E> {
 		try {
 			codeContext = Context.newBuilder("js")
 					.hostClassLoader(classLoader)
+					.option("engine.WarnInterpreterOnly", "false")
 					.allowAllAccess(true)
 					.out(out)
 					.err(err)

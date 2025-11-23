@@ -1,7 +1,15 @@
 
 options {
   STATIC = false; // always false in ParserGeneratorCC
-  LOOKAHEAD = 2; // because of bareword arguments
+
+  // bareword arguments introduce an ambiguity with paren-grouped atoms e.g. for  
+  //  a("x")  can parse as
+  //    seq -> rep -> atom -> pred "(" arg ")" -> pred "(" str ")"
+  //            OR
+  //    seq -> rep rep -> atom atom -> pred "(" alt ")" -> pred "(" pred ")"
+  FORCE_LA_CHECK = true;
+  LOOKAHEAD = 5; // a smaller lookahead prevents parsing of   a ("x" | "y")
+
   JAVA_TEMPLATE_TYPE = "modern";
 }
 PARSER_BEGIN(Parser)
@@ -14,6 +22,9 @@ import java.util.*;
 public class Parser {
   public static void main(String []args) throws Exception {
     String[] examples = new String[] {
+      "a \"x\"",
+      "a(\"x\")",
+      "a(\"x\"b(\"y\"|\"z\")|\"w\")",
       "\"before\" /blah blah blah/ 'after'",
       "\"before\" [a!=null && (b[5] == 5)] 'after'",
       "<'ham'> /bacon/",
@@ -64,7 +75,11 @@ TOKEN: {
            | <RPAREN: ")">
            | <LBRACE: "{">
            | <RBRACE: "}">
+           | <LANGLE: "<">
+           | <RANGLE: ">">
+           | <BANG: "!">
            | <PIPE: "|">
+           | <SEMICOLON: ";">
            | <STAR: "*">
            | <PLUS: "+">
            | <QMARK: "?">
@@ -158,10 +173,10 @@ Pat pred(): {
     return new BarePred(t.image,args);
   }
   | <DOT> { return new AnyPred(); }
-  | ( "<" p=pred()  ">" ) {
+  | ( <LANGLE> p=pred()  <RANGLE> ) {
     return new NodePred((Predicate)p);
   }
-  | ( "!" (p=pred() | "(" p=pred() ")" ))  {
+  | ( <BANG> (p=pred() | <LPAREN> p=pred() <RPAREN> ))  {
     boolean b=true;
     while(p instanceof NotPred) {
       p=((NotPred)p).p;
@@ -248,7 +263,7 @@ List<Expr> expr_list(): {
   Pat s=null;
 }
 {
-  (  (s=alt() { l.add(new Expr(s));} )  (";"  s=alt() { l.add(new Expr(s));}  )*  (";")?  <EOF> )  {
+  (  (s=alt() { l.add(new Expr(s));} )  (<SEMICOLON>  s=alt() { l.add(new Expr(s));}  )* <EOF> )  {
     return l;
   }
 }

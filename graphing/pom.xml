@@ -14,9 +14,19 @@
 	<dependencies>
 
 		<dependency>
-			<groupId>com.github.jpleasu.ldggrep</groupId>
-			<artifactId>ldggrep-graphing-variant-${ldggrep.graphing.variant}</artifactId>
-			<version>${revision}</version>
+			<groupId>org.jgrapht</groupId>
+			<artifactId>jgrapht-core</artifactId>
+			<version>1.5.1</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.tomnelson</groupId>
+			<artifactId>jungrapht-layout</artifactId>
+			<version>1.4</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.tomnelson</groupId>
+			<artifactId>jungrapht-visualization</artifactId>
+			<version>1.4</version>
 		</dependency>
 
 		<dependency>
